@@ -41,7 +41,7 @@
 
 Для градационных изображений вычисляется минимум интенсивности в окрестности. Вычислительная сложность линейна от размера изображения и элемента; интегрируется в библиотеки с оптимизациями.
 
-### 1.4. Реализация эрозии
+### 1.4. Базовая реализация эрозии
 
 Пример реализации на C++ с OpenCV (сокращённая версия только для эрозии) взят с официального сайта: [https://docs.opencv.org/3.4/db/df6/tutorial_erosion_dilatation.html](https://docs.opencv.org/3.4/db/df6/tutorial_erosion_dilatation.html).
 
@@ -88,4 +88,74 @@ void Erosion(int, void*) {
     erode(src, erosion_dst, element);
     imshow("Erosion Demo", erosion_dst);
 }
+```
+
+
+### Своя реализация эрозии
+Был реализован простой класс с единственной главной функцией erode():
+
+```python
+class Erosion:
+    def __init__(self, kernel=None):
+        if kernel is None:
+            kernel = np.ones((3, 3), dtype=np.uint8)
+        self.kernel = kernel
+
+        self.kernel_h, self.kernel_w = self.kernel.shape
+        self.pad_h = self.kernel_h // 2
+        self.pad_w = self.kernel_w // 2
+    
+    def erode(self, image: np.ndarray):
+        img_h, img_w = image.shape
+        
+        padded_img = np.pad(image, ((self.pad_h, self.pad_h), (self.pad_w, self.pad_w)), mode='constant', constant_values=0)
+        
+        output = np.zeros_like(image)
+        
+        for i in range(img_h):
+            for j in range(img_w):
+                region = padded_img[i:i+self.kernel_h, j:j+self.kernel_w]
+                
+                match = np.where(self.kernel == 1, region, 1)
+                output[i, j] = np.all(match == 1)
+        
+        return output
+```
+Для тестирования корректности работы алгоритма было взято несколько примеров, в том числе из изображения из [документации](https://docs.opencv.org/3.4/db/df6/tutorial_erosion_dilatation.html) OpenCV
+
+Базовое изображение
+
+![Базовое изображение](images/base_image.png)
+
+Обработанное изображение
+
+![Обработанное изображение](images/eroded_image.png)
+
+
+# Бенчмарк методов эрозии
+Для теста производительности использовалась train-выборка на 1190 из датасета с цветами: https://www.kaggle.com/datasets/alsaniipe/flowerdatasets
+
+Предварительно изображения были бинаризованы с помощью встроенных методов OpenCV:
+```python
+def otsu_binarize(image: np.ndarray) -> np.ndarray:
+    if len(image.shape) == 3:
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+    _, binary_image = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        
+    return binary_image
+```
+
+Время обработки бинаризованных изображений самописным методом занимает ~24 минуты:
+```
+
+ 15%|█▍        | 177/1190 [03:33<20:21,  1.21s/it]
+CPU times: user 3min 31s, sys: 1.03 s, total: 3min 32s
+Wall time: 3min 33s
+```
+
+В то же самое время обработка методами из OpenCV заняла менее 1 секунды:
+```
+CPU times: user 183 ms, sys: 597 ms, total: 780 ms
+Wall time: 776 ms
 ```
