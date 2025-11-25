@@ -192,7 +192,7 @@ test_time_default.py
         img = cv.imread(image, cv.IMREAD_GRAYSCALE)
         binary_images.append(
             cv.adaptiveThreshold(
-                img, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, 2
+                img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
             )
         )
 
